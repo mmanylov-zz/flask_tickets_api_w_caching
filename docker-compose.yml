@@ -1,0 +1,35 @@
+version: '3.7'
+
+services:
+  web:
+    restart: always
+    build: .
+    ports:
+      - 5000:5000
+    depends_on:
+      - redis
+      - postgres
+    links:
+      - postgres
+      - redis
+    volumes:
+        - .:/code
+    env_file:
+      - .env
+
+  postgres:
+    restart: always
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: ticketsuser
+      POSTGRES_PASSWORD: easypass
+      POSTGRES_DB: tickets
+    expose:
+      - "5432"
+
+  redis:
+    image: redis:alpine
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 3
