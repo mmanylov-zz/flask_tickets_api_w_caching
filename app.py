@@ -59,9 +59,9 @@ class Comment(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'ticket_id': self.ticket_id,
             'text': self.text,
             'email': self.email,
-            'status': self.status,
             'created_at': str(self.created_at) if self.created_at else None,
         }
 
@@ -121,6 +121,32 @@ def ticket_update_status(ticket_id):
 @app.route('/ticket/delete/<int:ticket_id>', methods=['POST'])
 def ticket_delete(ticket_id):
     db.session.query(Ticket).filter_by(id=ticket_id).delete()
+    db.session.commit()
+    return "Success"
+
+
+@app.route('/ticket/<int:ticket_id>/comments', methods=['GET'])
+def ticket_comments_get(ticket_id):
+    ticket = Ticket.query.options(joinedload(Ticket.comments)).filter_by(id=ticket_id).one()
+    return json.dumps([c.to_dict() for c in ticket.comments])
+
+
+@app.route('/ticket/<int:ticket_id>/comment', methods=['POST'])
+def ticket_comment_create(ticket_id):
+    req_json = request.json
+    new_comment = Comment(
+        ticket_id=ticket_id,
+        text=req_json.get('text'),
+        email=req_json.get('email')
+    )
+    db.session.add(new_comment)
+    db.session.commit()
+    return new_comment.to_dict()
+
+
+@app.route('/ticket/<int:ticket_id>/comment/<int:comment_id>/delete', methods=['POST'])
+def ticket_comment_delete(ticket_id, comment_id):
+    db.session.query(Comment).filter_by(id=comment_id, ticket_id=ticket_id).delete()
     db.session.commit()
     return "Success"
 
