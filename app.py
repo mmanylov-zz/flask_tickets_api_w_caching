@@ -92,7 +92,7 @@ def ticket_update_status(ticket_id):
     if not ticket_status_is_valid(ticket, new_status):
         return f"Wrong status {new_status} after status {ticket.status}", 400
 
-    db.session.query(Ticket).filter_by(id=ticket_id).update({Ticket.status: new_status})
+    db.session.query(Ticket).filter_by(id=ticket_id).update({Ticket.status: new_status, Ticket.updated_at: datetime.utcnow()})
     db.session.commit()
     updated_ticket = db.session.query(Ticket).filter_by(id=ticket_id).one()
     return updated_ticket.to_dict()
