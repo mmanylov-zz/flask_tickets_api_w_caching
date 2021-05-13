@@ -10,8 +10,9 @@ then
 
     echo "PostgreSQL started"
 fi
+
 docker-compose exec web flask db upgrade
-docker-compose exec web flask run
+docker-compose exec web python app.py
 #python manage.py flush --no-input
 # docker-compose exec app python manage.py migrate
 #python manage.py migrate
