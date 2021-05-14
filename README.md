@@ -5,7 +5,7 @@
 
 Контейнеризация проекта не доведена до конца.
 Просьба обратить вниммание на проект [контейнеризированного блога на Django 
-с использованием Elasticsearch](https://github.com/mmanylov/django_blog_real).
+с использованием Elasticsearch](https://github.com/mmanylov/django_blog_w_elasticsearch_containerized).
 
 ## Описание функциональности
 
