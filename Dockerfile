@@ -6,11 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 # set work directory
 WORKDIR /usr/src/app
-# install dependencies
-COPY ./requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
 # copy project
 COPY . .
+# install dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 # run entrypoint.sh
 ENTRYPOINT ["sh", "/usr/src/app/entrypoint.sh"]
