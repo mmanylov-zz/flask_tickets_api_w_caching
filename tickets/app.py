@@ -2,12 +2,14 @@ import os
 import json
 
 from datetime import datetime
+from functools import wraps
 
-from flask import Flask, request
+from flask import Flask, request, abort, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_caching import Cache
 from sqlalchemy.orm import joinedload
+from jsonschema import validate as validate_jsonschema, ValidationError
 
 from config import TicketStatus
 
@@ -67,6 +69,19 @@ class Comment(db.Model):
         }
 
 
+def validate_schema(schema):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                validate_jsonschema(instance=request.json, schema=schema)
+            except ValidationError as e:
+                return {'error': str(e)}, 400
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 @app.route('/tickets', methods=['GET'])
 def ticket_all():
     tickets = cache.get('all_tickets')
@@ -95,6 +110,14 @@ def ticket_comments_get(ticket_id):
 
 
 @app.route('/ticket', methods=['POST'])
+@validate_schema(schema={
+    'type': 'object',
+    'properties': {
+        'subject': {'type': 'string'},
+        'text': {'type': 'string'},
+        'email': {'type': 'string'}
+    }
+})
 def ticket_create():
     req_json = request.json
     new_ticket = Ticket(
