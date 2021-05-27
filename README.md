@@ -1,6 +1,6 @@
 # Простое Flask API приложение tickets
 
-Реализация на Python, Flask, PostgreSQL, SQLAlchemy, uWSGI, Redis. API было реализовано с большим количеством 
+Реализация на Python, Flask, PostgreSQL, SQLAlchemy, uWSGI, Redis (Flask-Caching). API было реализовано с большим количеством 
 ендпоинтов, чем было указано в требованиях к задаче, они отмечены в списке ниже.
 
 Контейнеризация проекта не доведена до конца.
