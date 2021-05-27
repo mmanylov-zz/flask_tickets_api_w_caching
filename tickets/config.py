@@ -16,7 +16,11 @@ class Config(object):
     TESTING = False
     CSRF_ENABLED = True
     SECRET_KEY = 'this-really-needs-to-be-changed'
-    SQLALCHEMY_DATABASE_URI = "postgresql://ticketsuser:easypass@localhost/tickets"
+    SQLALCHEMY_DATABASE_URI = 'postgresql://ticketsuser:easypass@localhost/tickets'
+    CACHE_TYPE = 'RedisCache'
+    # CACHE_REDIS_DB = 2
+    CACHE_KEY_PREFIX = 'cache_'
+    CACHE_DEFAULT_TIMEOUT = 300
 
 
 class ProductionConfig(Config):

@@ -3,10 +3,10 @@ import json
 
 from datetime import datetime
 
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask import request
+from flask_caching import Cache
 from sqlalchemy.orm import joinedload
 
 from config import TicketStatus
@@ -17,6 +17,7 @@ env_config = os.getenv("APP_SETTINGS", "config.DevelopmentConfig")
 app.config.from_object(env_config)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+cache = Cache(app)
 migrate = Migrate(app, db)
 
 
@@ -68,14 +69,29 @@ class Comment(db.Model):
 
 @app.route('/tickets', methods=['GET'])
 def ticket_all():
-    tickets = Ticket.query.all()
+    tickets = cache.get('all_tickets')
+    if tickets is None:
+        tickets = Ticket.query.all()
+        cache.set('all_tickets', tickets)
     return json.dumps([t.to_dict() for t in tickets])
 
 
 @app.route('/ticket/<int:ticket_id>', methods=['GET'])
 def ticket_get(ticket_id):
-    ticket = Ticket.query.options(joinedload(Ticket.comments, innerjoin=True)).filter_by(id=ticket_id).one()
+    ticket = cache.get(f"ticket_{ticket_id}")
+    if ticket is None:
+        ticket = Ticket.query.options(joinedload(Ticket.comments, innerjoin=True)).filter_by(id=ticket_id).one()
+        cache.set(f"ticket_{ticket_id}", ticket)
     return ticket.to_dict()
+
+
+@app.route('/ticket/<int:ticket_id>/comments', methods=['GET'])
+def ticket_comments_get(ticket_id):
+    comments = cache.get(f"comments_{ticket_id}")
+    if comments is None:
+        comments = Comment.query.options().filter_by(ticket_id=ticket_id).all()
+        cache.set(f"comments_{ticket_id}", comments)
+    return json.dumps([c.to_dict() for c in comments])
 
 
 @app.route('/ticket', methods=['POST'])
@@ -89,6 +105,7 @@ def ticket_create():
     )
     db.session.add(new_ticket)
     db.session.commit()
+    cache.delete('all_tickets')
     return new_ticket.to_dict()
 
 
@@ -115,6 +132,7 @@ def ticket_update_status(ticket_id):
     db.session.query(Ticket).filter_by(id=ticket_id).update({Ticket.status: new_status, Ticket.updated_at: datetime.utcnow()})
     db.session.commit()
     updated_ticket = db.session.query(Ticket).filter_by(id=ticket_id).one()
+    cache.delete(f"ticket_{ticket_id}")
     return updated_ticket.to_dict()
 
 
@@ -122,13 +140,8 @@ def ticket_update_status(ticket_id):
 def ticket_delete(ticket_id):
     db.session.query(Ticket).filter_by(id=ticket_id).delete()
     db.session.commit()
+    cache.delete(f"ticket_{ticket_id}")
     return "Success"
-
-
-@app.route('/ticket/<int:ticket_id>/comments', methods=['GET'])
-def ticket_comments_get(ticket_id):
-    ticket = Ticket.query.options(joinedload(Ticket.comments, innerjoin=True)).filter_by(id=ticket_id).one()
-    return json.dumps([c.to_dict() for c in ticket.comments])
 
 
 @app.route('/ticket/<int:ticket_id>/comment', methods=['POST'])
@@ -141,6 +154,7 @@ def ticket_comment_create(ticket_id):
     )
     db.session.add(new_comment)
     db.session.commit()
+    cache.delete(f"comments_{ticket_id}")
     return new_comment.to_dict()
 
 
@@ -148,8 +162,11 @@ def ticket_comment_create(ticket_id):
 def ticket_comment_delete(ticket_id, comment_id):
     db.session.query(Comment).filter_by(id=comment_id, ticket_id=ticket_id).delete()
     db.session.commit()
+    cache.delete(f"comments_{ticket_id}")
     return "Success"
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        cache.clear()
     app.run(host="0.0.0.0")
