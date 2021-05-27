@@ -4,12 +4,13 @@ import json
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, request, abort, Response
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_caching import Cache
 from sqlalchemy.orm import joinedload
 from jsonschema import validate as validate_jsonschema, ValidationError
+from pydantic import BaseModel, ValidationError as PydanticValidationError, validator
 
 from config import TicketStatus
 
@@ -82,6 +83,18 @@ def validate_schema(schema):
     return decorator
 
 
+class TicketPydantic(BaseModel):
+    subject: str
+    text: str
+    email: str
+
+    @validator('subject')
+    def min_length(cls, v):
+        if len(v) <= 8:
+            raise ValueError('value must be longer than 8 symbols')
+        return v
+
+
 @app.route('/tickets', methods=['GET'])
 def ticket_all():
     tickets = cache.get('all_tickets')
@@ -120,6 +133,12 @@ def ticket_comments_get(ticket_id):
 })
 def ticket_create():
     req_json = request.json
+
+    try:
+        TicketPydantic(**req_json)
+    except PydanticValidationError as e:
+        return e.json(), 400
+
     new_ticket = Ticket(
         subject=req_json.get('subject'),
         text=req_json.get('text'),
