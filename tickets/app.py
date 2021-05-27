@@ -24,6 +24,11 @@ cache = Cache(app)
 migrate = Migrate(app, db)
 
 
+CACHE_KEY_ALL_TICKETS = 'all_tickets'
+CACHE_KEY_TEMPLATE_TICKET = 'ticket_{ticket_id}'
+CACHE_KEY_TEMPLATE_COMMENT = 'comments_for_ticket_{ticket_id}'
+
+
 class Ticket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     subject = db.Column(db.String(256), nullable=False)
@@ -97,28 +102,28 @@ class TicketPydantic(BaseModel):
 
 @app.route('/tickets', methods=['GET'])
 def ticket_all():
-    tickets = cache.get('all_tickets')
+    tickets = cache.get(CACHE_KEY_ALL_TICKETS)
     if tickets is None:
         tickets = Ticket.query.all()
-        cache.set('all_tickets', tickets)
+        cache.set(CACHE_KEY_ALL_TICKETS, tickets)
     return json.dumps([t.to_dict() for t in tickets])
 
 
 @app.route('/ticket/<int:ticket_id>', methods=['GET'])
 def ticket_get(ticket_id):
-    ticket = cache.get(f"ticket_{ticket_id}")
+    ticket = cache.get(CACHE_KEY_TEMPLATE_TICKET.format(ticket_id=ticket_id))
     if ticket is None:
         ticket = Ticket.query.options(joinedload(Ticket.comments, innerjoin=True)).filter_by(id=ticket_id).one()
-        cache.set(f"ticket_{ticket_id}", ticket)
+        cache.set(CACHE_KEY_TEMPLATE_TICKET.format(ticket_id=ticket_id), ticket)
     return ticket.to_dict()
 
 
 @app.route('/ticket/<int:ticket_id>/comments', methods=['GET'])
 def ticket_comments_get(ticket_id):
-    comments = cache.get(f"comments_{ticket_id}")
+    comments = cache.get(CACHE_KEY_TEMPLATE_COMMENT.format(ticket_id=ticket_id))
     if comments is None:
         comments = Comment.query.options().filter_by(ticket_id=ticket_id).all()
-        cache.set(f"comments_{ticket_id}", comments)
+        cache.set(CACHE_KEY_TEMPLATE_COMMENT.format(ticket_id=ticket_id), comments)
     return json.dumps([c.to_dict() for c in comments])
 
 
@@ -147,7 +152,7 @@ def ticket_create():
     )
     db.session.add(new_ticket)
     db.session.commit()
-    cache.delete('all_tickets')
+    cache.delete(CACHE_KEY_ALL_TICKETS)
     return new_ticket.to_dict()
 
 
@@ -174,7 +179,8 @@ def ticket_update_status(ticket_id):
     db.session.query(Ticket).filter_by(id=ticket_id).update({Ticket.status: new_status, Ticket.updated_at: datetime.utcnow()})
     db.session.commit()
     updated_ticket = db.session.query(Ticket).filter_by(id=ticket_id).one()
-    cache.delete(f"ticket_{ticket_id}")
+    cache.delete(CACHE_KEY_TEMPLATE_TICKET.format(ticket_id=ticket_id))
+    cache.delete(CACHE_KEY_ALL_TICKETS)
     return updated_ticket.to_dict()
 
 
@@ -182,8 +188,8 @@ def ticket_update_status(ticket_id):
 def ticket_delete(ticket_id):
     db.session.query(Ticket).filter_by(id=ticket_id).delete()
     db.session.commit()
-    cache.delete(f"ticket_{ticket_id}")
-    cache.delete('all_tickets')
+    cache.delete(CACHE_KEY_TEMPLATE_TICKET.format(ticket_id=ticket_id))
+    cache.delete(CACHE_KEY_ALL_TICKETS)
     return "Success"
 
 
@@ -197,7 +203,7 @@ def ticket_comment_create(ticket_id):
     )
     db.session.add(new_comment)
     db.session.commit()
-    cache.delete(f"comments_{ticket_id}")
+    cache.delete(CACHE_KEY_TEMPLATE_COMMENT.format(ticket_id=ticket_id))
     return new_comment.to_dict()
 
 
@@ -205,7 +211,7 @@ def ticket_comment_create(ticket_id):
 def ticket_comment_delete(ticket_id, comment_id):
     db.session.query(Comment).filter_by(id=comment_id, ticket_id=ticket_id).delete()
     db.session.commit()
-    cache.delete(f"comments_{ticket_id}")
+    cache.delete(CACHE_KEY_TEMPLATE_COMMENT.format(ticket_id=ticket_id))
     return "Success"
 
 
