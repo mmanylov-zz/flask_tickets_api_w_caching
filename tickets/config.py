@@ -18,8 +18,7 @@ class Config(object):
     SECRET_KEY = 'this-really-needs-to-be-changed'
     SQLALCHEMY_DATABASE_URI = 'postgresql://ticketsuser:easypass@localhost/tickets'
     CACHE_TYPE = 'RedisCache'
-    # CACHE_REDIS_DB = 2
-    CACHE_KEY_PREFIX = 'cache_'
+    CACHE_REDIS_DB = 2
     CACHE_DEFAULT_TIMEOUT = 300
 
 

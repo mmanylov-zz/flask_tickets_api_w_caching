@@ -101,7 +101,7 @@ def ticket_create():
         subject=req_json.get('subject'),
         text=req_json.get('text'),
         email=req_json.get('email'),
-        status=TicketStatus.OPEN
+        status=TicketStatus.OPEN.value
     )
     db.session.add(new_ticket)
     db.session.commit()
@@ -141,6 +141,7 @@ def ticket_delete(ticket_id):
     db.session.query(Ticket).filter_by(id=ticket_id).delete()
     db.session.commit()
     cache.delete(f"ticket_{ticket_id}")
+    cache.delete('all_tickets')
     return "Success"
 
 
